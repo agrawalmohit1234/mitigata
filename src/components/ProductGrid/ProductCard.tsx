@@ -14,7 +14,8 @@ const getStockStatus = (stock: number): StockStatus => {
   return "In Stock";
 };
 
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const highlightText = (text: string, term: string) => {
   if (!term) return text;
@@ -22,7 +23,7 @@ const highlightText = (text: string, term: string) => {
   const regex = new RegExp(`(${safeTerm})`, "ig");
   const parts = text.split(regex);
   return parts.map((part, index) =>
-    index % 2 === 1 ? <mark key={index}>{part}</mark> : part
+    index % 2 === 1 ? <mark key={index}>{part}</mark> : part,
   );
 };
 
@@ -44,7 +45,7 @@ const LazyImage = ({ src, alt }: { src: string; alt: string }) => {
           }
         });
       },
-      { rootMargin: "100px" }
+      { rootMargin: "100px" },
     );
 
     observer.observe(node);
@@ -70,11 +71,16 @@ interface ProductCardProps {
   view: "grid" | "list";
   onSelect: (product: Product) => void;
   onCompareToggle: (id: number) => void;
+  onCheckout: (id: number) => void;
   isCompared: boolean;
+  isCheckout: boolean;
   searchTerm: string;
   isFavorite: boolean;
   onToggleFavorite: (id: number) => void;
   isSavingFavorite: boolean;
+  disableAddToCart?: boolean;
+  disableFavourite?: boolean;
+  disableCompare?: boolean;
 }
 
 export const ProductCard = memo(function ProductCard({
@@ -82,13 +88,21 @@ export const ProductCard = memo(function ProductCard({
   view,
   onSelect,
   onCompareToggle,
+  onCheckout,
   isCompared,
+  isCheckout,
   searchTerm,
   isFavorite,
   onToggleFavorite,
   isSavingFavorite,
+  disableAddToCart,
+  disableFavourite,
+  disableCompare,
 }: ProductCardProps) {
-  const stockStatus = useMemo(() => getStockStatus(product.stock), [product.stock]);
+  const stockStatus = useMemo(
+    () => getStockStatus(product.stock),
+    [product.stock],
+  );
 
   return (
     <article
@@ -104,42 +118,67 @@ export const ProductCard = memo(function ProductCard({
     >
       <LazyImage src={product.thumbnail} alt={product.title} />
       <div className="product-info">
-        <button
-          className={`heart-button ${isFavorite ? "active" : ""}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleFavorite(product.id);
-          }}
-          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-        >
-          {isSavingFavorite ? <span className="spinner" /> : "♥"}
-        </button>
+        {!disableFavourite && (
+          <button
+            className={`heart-button ${isFavorite ? "active" : ""}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleFavorite(product.id);
+            }}
+            aria-label={
+              isFavorite ? "Remove from favorites" : "Add to favorites"
+            }
+          >
+            {isSavingFavorite ? <span className="spinner" /> : "♥"}
+          </button>
+        )}
         <div className="product-meta">
           <h3>{highlightText(product.title, searchTerm)}</h3>
           {view === "list" && (
-            <p className="description">{highlightText(product.description, searchTerm)}</p>
+            <p className="description">
+              {highlightText(product.description, searchTerm)}
+            </p>
           )}
           <div className="rating">
-            <span className="stars">{"★".repeat(Math.round(product.rating))}</span>
+            <span className="stars">
+              {"★".repeat(Math.round(product.rating))}
+            </span>
             <span>{product.rating.toFixed(1)}</span>
           </div>
         </div>
         <div className="product-price">
           <span className="price">{formatCurrency(product.price)}</span>
           <span className="brand">{product.brand}</span>
-          <span className={`stock-badge ${STOCK_BADGE[stockStatus]}`}>{stockStatus}</span>
+          <span className={`stock-badge ${STOCK_BADGE[stockStatus]}`}>
+            {stockStatus}
+          </span>
         </div>
-        <label
-          className="compare-checkbox"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <input
-            type="checkbox"
-            checked={isCompared}
-            onChange={() => onCompareToggle(product.id)}
-          />
-          Compare
-        </label>
+        {!disableCompare && (
+          <label
+            className="compare-checkbox"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <input
+              type="checkbox"
+              checked={isCompared}
+              onChange={() => onCompareToggle(product.id)}
+            />
+            Compare
+          </label>
+        )}
+        {!disableAddToCart && (
+          <div>
+            <button
+              disabled={isCheckout}
+              onClick={(e) => {
+                e.stopPropagation();
+                onCheckout(product.id);
+              }}
+            >
+              {isCheckout ? "Already in Cart" : "Add To Cart"}
+            </button>
+          </div>
+        )}
       </div>
     </article>
   );

@@ -1,5 +1,11 @@
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import React, {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { Route, Routes, useNavigate } from "react-router-dom";
 import "./App.css";
 import { Header } from "./components/Header/Header";
 import { FilterPanel } from "./components/FilterPanel/FilterPanel";
@@ -14,21 +20,45 @@ import { ToastHost } from "./components/ToastHost";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { FavoritesProvider, useFavorites } from "./context/FavoritesContext";
 import { Analytics } from "./pages/Analytics";
+import { Checkout } from "./pages/Checkout";
 import type { ActiveFilterChip } from "./types/filter.types";
 import type { Product } from "./types/product.types";
 
-const ProductModal = React.lazy(() => import("./components/ProductModal/ProductModal").then((module) => ({ default: module.ProductModal })));
-const ComparisonDrawer = React.lazy(() => import("./components/ComparisonDrawer/ComparisonDrawer").then((module) => ({ default: module.ComparisonDrawer })));
+const ProductModal = React.lazy(() =>
+  import("./components/ProductModal/ProductModal").then((module) => ({
+    default: module.ProductModal,
+  })),
+);
+const ComparisonDrawer = React.lazy(() =>
+  import("./components/ComparisonDrawer/ComparisonDrawer").then((module) => ({
+    default: module.ComparisonDrawer,
+  })),
+);
 
 function Dashboard() {
+  const navigate = useNavigate();
   const { products, loading, error, retry } = useProducts(100);
   const maxPrice = useMemo(() => {
     if (!products.length) return 0;
     return Math.max(...products.map((product) => product.price));
   }, [products]);
 
-  const { filters, setFilter, toggleMulti, clearFilters, debouncedSearch, activeFilters } = useFilters(maxPrice);
-  const { compareIds, toggleCompare, removeFromCompare, addToCompare } = useProductContext();
+  const {
+    filters,
+    setFilter,
+    toggleMulti,
+    clearFilters,
+    debouncedSearch,
+    activeFilters,
+  } = useFilters(maxPrice);
+  const {
+    compareIds,
+    toggleCompare,
+    toggleCheckout,
+    removeFromCompare,
+    addToCompare,
+    checkoutIds,
+  } = useProductContext();
   const { favoriteIds, toggleFavorite, savingIds } = useFavorites();
   const { addToast } = useToasts();
 
@@ -40,7 +70,11 @@ function Dashboard() {
 
   useEffect(() => {
     if (error) {
-      addToast({ type: "error", title: "Failed to load products.", message: "Retry?" });
+      addToast({
+        type: "error",
+        title: "Failed to load products.",
+        message: "Retry?",
+      });
     }
   }, [error, addToast]);
 
@@ -54,7 +88,10 @@ function Dashboard() {
     return { categories, brands };
   }, [products]);
 
-  const categories = useMemo(() => Object.keys(counts.categories).sort(), [counts]);
+  const categories = useMemo(
+    () => Object.keys(counts.categories).sort(),
+    [counts],
+  );
   const brands = useMemo(() => Object.keys(counts.brands).sort(), [counts]);
 
   const filteredProducts = useMemo(() => {
@@ -65,7 +102,10 @@ function Dashboard() {
     });
   }, [products, filters, debouncedSearch, favoriteIds]);
 
-  const sortedProducts = useMemo(() => sortProducts(filteredProducts, filters.sort), [filteredProducts, filters.sort]);
+  const sortedProducts = useMemo(
+    () => sortProducts(filteredProducts, filters.sort),
+    [filteredProducts, filters.sort],
+  );
   const pagedProducts = useMemo(() => {
     const start = (page - 1) * pageSize;
     return sortedProducts.slice(start, start + pageSize);
@@ -84,83 +124,155 @@ function Dashboard() {
     filters.priceMin,
     filters.priceMax,
     filters.favoritesOnly,
+    filters.startDate,
+    filters.endDate,
   ]);
 
-  const handleCompareToggle = useCallback((id: number) => {
-    if (!compareIds.includes(id) && compareIds.length >= 3) {
-      addToast({ type: "error", title: "Comparison limit", message: "You can compare up to 3 products." });
-      return;
-    }
-    toggleCompare(id);
-    const already = compareIds.includes(id);
-    addToast({
-      type: already ? "info" : "success",
-      title: already ? "Removed" : "Added",
-      message: already ? "Product removed from comparison." : "Product added to comparison.",
-    });
-  }, [compareIds, toggleCompare, addToast]);
+  const handleCompareToggle = useCallback(
+    (id: number) => {
+      if (!compareIds.includes(id) && compareIds.length >= 3) {
+        addToast({
+          type: "error",
+          title: "Comparison limit",
+          message: "You can compare up to 3 products.",
+        });
+        return;
+      }
+      toggleCompare(id);
+      const already = compareIds.includes(id);
+      addToast({
+        type: already ? "info" : "success",
+        title: already ? "Removed" : "Added",
+        message: already
+          ? "Product removed from comparison."
+          : "Product added to comparison.",
+      });
+    },
+    [compareIds, toggleCompare, addToast],
+  );
 
-  const handleModalCompare = useCallback((id: number) => {
-    if (compareIds.includes(id)) return;
-    if (compareIds.length >= 3) {
-      addToast({ type: "error", title: "Comparison limit", message: "You can compare up to 3 products." });
-      return;
-    }
-    addToCompare(id);
-    addToast({ type: "success", title: "Added", message: "Product added to comparison." });
-  }, [compareIds, addToCompare, addToast]);
+  const handleCheckout = useCallback(
+    (id: number) => {
+      toggleCheckout(id);
+      addToast({
+        type: "success",
+        title: "Added",
+        message: "Product item added!!",
+      });
+    },
+    [toggleCheckout, addToast],
+  );
 
-  const handleRemoveFilter = useCallback((filter: ActiveFilterChip) => {
-    if (filter.key === "search") setFilter("search", "");
-    if (filter.key === "categories" && filter.value) {
-      toggleMulti("categories", filter.value);
-    }
-    if (filter.key === "brands" && filter.value) {
-      toggleMulti("brands", filter.value);
-    }
-    if (filter.key === "stock" && filter.value) {
-      toggleMulti("stock", filter.value);
-    }
-    if (filter.key === "rating") setFilter("rating", 0);
-    if (filter.key === "price") {
-      setFilter("priceMin", 0);
-      setFilter("priceMax", maxPrice);
-    }
-    if (filter.key === "favorites") {
-      setFilter("favoritesOnly", false);
-    }
-  }, [setFilter, toggleMulti, maxPrice]);
+  const handleModalCompare = useCallback(
+    (id: number) => {
+      if (compareIds.includes(id)) return;
+      if (compareIds.length >= 3) {
+        addToast({
+          type: "error",
+          title: "Comparison limit",
+          message: "You can compare up to 3 products.",
+        });
+        return;
+      }
+      addToCompare(id);
+      addToast({
+        type: "success",
+        title: "Added",
+        message: "Product added to comparison.",
+      });
+    },
+    [compareIds, addToCompare, addToast],
+  );
 
-  const handleSearchChange = useCallback((value: string) => setFilter("search", value), [setFilter]);
-  const handleClearSearch = useCallback(() => setFilter("search", ""), [setFilter]);
-  const handleViewChange = useCallback((value: "grid" | "list") => setFilter("view", value), [setFilter]);
-  const handleSortChange = useCallback((value: string) => setFilter("sort", value), [setFilter]);
-  const handleFilterToggle = useCallback(() => setFiltersOpen((prev) => !prev), []);
-  const handleSelectProduct = useCallback((product: Product) => setSelectedProduct(product), []);
+  const handleRemoveFilter = useCallback(
+    (filter: ActiveFilterChip) => {
+      if (filter.key === "search") setFilter("search", "");
+      if (filter.key === "categories" && filter.value) {
+        toggleMulti("categories", filter.value);
+      }
+      if (filter.key === "brands" && filter.value) {
+        toggleMulti("brands", filter.value);
+      }
+      if (filter.key === "stock" && filter.value) {
+        toggleMulti("stock", filter.value);
+      }
+      if (filter.key === "rating") setFilter("rating", 0);
+      if (filter.key === "price") {
+        setFilter("priceMin", 0);
+        setFilter("priceMax", maxPrice);
+      }
+      if (filter.key === "date") {
+        setFilter("startDate", "");
+        setFilter("endDate", "");
+      }
+      if (filter.key === "favorites") {
+        setFilter("favoritesOnly", false);
+      }
+    },
+    [setFilter, toggleMulti, maxPrice],
+  );
+
+  const handleSearchChange = useCallback(
+    (value: string) => setFilter("search", value),
+    [setFilter],
+  );
+  const handleClearSearch = useCallback(
+    () => setFilter("search", ""),
+    [setFilter],
+  );
+  const handleViewChange = useCallback(
+    (value: "grid" | "list") => setFilter("view", value),
+    [setFilter],
+  );
+  const handleSortChange = useCallback(
+    (value: string) => setFilter("sort", value),
+    [setFilter],
+  );
+  const handleFilterToggle = useCallback(
+    () => setFiltersOpen((prev) => !prev),
+    [],
+  );
+  const handleSelectProduct = useCallback(
+    (product: Product) => setSelectedProduct(product),
+    [],
+  );
   const handleOpenCompare = useCallback(() => setCompareOpen(true), []);
   const handleCloseCompare = useCallback(() => setCompareOpen(false), []);
   const handleCloseModal = useCallback(() => setSelectedProduct(null), []);
 
-  const handleToggleFavorite = useCallback((id: number) => {
-    const wasFavorite = favoriteIds.includes(id);
-    toggleFavorite(id, () => {
-      addToast({ type: "error", title: "Save failed", message: "Could not save favorite. Try again." });
-    });
-    addToast({
-      type: "success",
-      title: wasFavorite ? "Removed" : "Saved",
-      message: wasFavorite
-        ? "Removed from favorites."
-        : "Added to favorites.",
-    });
-  }, [toggleFavorite, addToast, favoriteIds]);
+  const handleOpenCheckout = useCallback(() => {
+    navigate("/checkout");
+  }, [navigate]);
+
+  const handleToggleFavorite = useCallback(
+    (id: number) => {
+      const wasFavorite = favoriteIds.includes(id);
+      toggleFavorite(id, () => {
+        addToast({
+          type: "error",
+          title: "Save failed",
+          message: "Could not save favorite. Try again.",
+        });
+      });
+      addToast({
+        type: "success",
+        title: wasFavorite ? "Removed" : "Saved",
+        message: wasFavorite
+          ? "Removed from favorites."
+          : "Added to favorites.",
+      });
+    },
+    [toggleFavorite, addToast, favoriteIds],
+  );
 
   if (error) {
     return (
       <div className="error-state">
         <h2>Failed to load products.</h2>
         <p>Check your connection and try again.</p>
-        <button className="btn primary" onClick={retry}>Retry</button>
+        <button className="btn primary" onClick={retry}>
+          Retry
+        </button>
       </div>
     );
   }
@@ -175,12 +287,16 @@ function Dashboard() {
         view={filters.view}
         onViewChange={handleViewChange}
         compareCount={compareIds.length}
+        checkoutCount={checkoutIds.length}
         onCompareOpen={handleOpenCompare}
+        onCheckoutOpen={handleOpenCheckout}
         onFilterToggle={handleFilterToggle}
         favoritesCount={favoriteIds.length}
       />
       <div className="layout">
-        {filtersOpen && <div className="filter-backdrop" onClick={handleFilterToggle} />}
+        {filtersOpen && (
+          <div className="filter-backdrop" onClick={handleFilterToggle} />
+        )}
         <FilterPanel
           categories={categories}
           brands={brands}
@@ -202,7 +318,9 @@ function Dashboard() {
           onSortChange={handleSortChange}
           onSelect={handleSelectProduct}
           onCompareToggle={handleCompareToggle}
+          onCheckout={handleCheckout}
           compareIds={compareIds}
+          checkoutIds={checkoutIds}
           searchTerm={debouncedSearch}
           loading={loading}
           activeFilters={activeFilters}
@@ -233,7 +351,9 @@ function Dashboard() {
         )}
         {compareOpen && (
           <ComparisonDrawer
-            products={products.filter((product) => compareIds.includes(product.id))}
+            products={products.filter((product) =>
+              compareIds.includes(product.id),
+            )}
             onClose={handleCloseCompare}
             onRemove={removeFromCompare}
           />
@@ -252,6 +372,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/analytics" element={<Analytics />} />
+              <Route path="/checkout" element={<Checkout />} />
             </Routes>
             <ToastHost />
           </ProductProvider>

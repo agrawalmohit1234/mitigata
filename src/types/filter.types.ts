@@ -3,6 +3,8 @@ export interface Filters {
   categories: string[];
   priceMin: number;
   priceMax: number;
+  startDate: string;
+  endDate: string;
   rating: number;
   stock: string[];
   brands: string[];

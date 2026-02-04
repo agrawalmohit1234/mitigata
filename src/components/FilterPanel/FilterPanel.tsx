@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import type { Filters } from "../../types/filter.types";
 import { CategoryFilter } from "./CategoryFilter";
 import { PriceRangeFilter } from "./PriceRangeFilter";
+import { DateRangeFilter } from "./DateRangeFilter";
 import { RatingFilter } from "./RatingFilter";
 import { StockFilter } from "./StockFilter";
 import { BrandFilter } from "./BrandFilter";
@@ -50,7 +51,11 @@ export function FilterPanel({
         <h2>Filters</h2>
         <span className="filter-count">{activeCount} active filters</span>
         {onClose && (
-          <button className="icon-button close-filter" onClick={onClose} aria-label="Close filters">
+          <button
+            className="icon-button close-filter"
+            onClick={onClose}
+            aria-label="Close filters"
+          >
             ×
           </button>
         )}
@@ -74,7 +79,19 @@ export function FilterPanel({
         }}
       />
 
-      <RatingFilter value={filters.rating} onChange={(value) => setFilter("rating", value)} />
+      <DateRangeFilter
+        startDate={filters.startDate}
+        endDate={filters.endDate}
+        onChange={(startDate, endDate) => {
+          setFilter("startDate", startDate);
+          setFilter("endDate", endDate);
+        }}
+      />
+
+      <RatingFilter
+        value={filters.rating}
+        onChange={(value) => setFilter("rating", value)}
+      />
 
       <StockFilter selected={filters.stock} toggle={toggleMulti} />
 
@@ -99,7 +116,9 @@ export function FilterPanel({
         onSearchChange={setBrandSearch}
       />
 
-      <button className="btn ghost" onClick={onClear}>Clear All Filters</button>
+      <button className="btn ghost" onClick={onClear}>
+        Clear All Filters
+      </button>
     </aside>
   );
 }

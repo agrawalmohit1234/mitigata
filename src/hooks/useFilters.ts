@@ -7,6 +7,8 @@ const DEFAULT_FILTERS: Filters = {
   categories: [],
   priceMin: 0,
   priceMax: 0,
+  startDate: "",
+  endDate: "",
   rating: 0,
   stock: [],
   brands: [],
@@ -43,6 +45,8 @@ export function useFilters(maxPrice: number) {
     initial.rating = parseNumber(params.get("rating"), 0);
     initial.priceMin = parseNumber(params.get("min"), 0);
     initial.priceMax = parseNumber(params.get("max"), 0);
+    initial.startDate = params.get("start") ?? "";
+    initial.endDate = params.get("end") ?? "";
     initial.favoritesOnly = params.get("fav") === "1";
 
     return initial;
@@ -60,10 +64,14 @@ export function useFilters(maxPrice: number) {
     const params = new URLSearchParams();
     if (filters.search) params.set("q", filters.search);
     if (filters.sort) params.set("sort", filters.sort);
-    if (filters.view && filters.view !== "grid") params.set("view", filters.view);
+    if (filters.view && filters.view !== "grid")
+      params.set("view", filters.view);
     if (filters.rating) params.set("rating", String(filters.rating));
     if (filters.priceMin) params.set("min", String(filters.priceMin));
-    if (filters.priceMax && filters.priceMax !== maxPrice) params.set("max", String(filters.priceMax));
+    if (filters.priceMax && filters.priceMax !== maxPrice)
+      params.set("max", String(filters.priceMax));
+    if (filters.startDate) params.set("start", String(filters.startDate));
+    if (filters.endDate) params.set("end", String(filters.endDate));
     if (filters.favoritesOnly) params.set("fav", "1");
 
     ARRAY_KEYS.forEach((key) => {
@@ -76,9 +84,12 @@ export function useFilters(maxPrice: number) {
     window.history.replaceState(null, "", url);
   }, [filters, maxPrice]);
 
-  const setFilter = useCallback(<K extends keyof Filters>(key: K, value: Filters[K]) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
-  }, []);
+  const setFilter = useCallback(
+    <K extends keyof Filters>(key: K, value: Filters[K]) => {
+      setFilters((prev) => ({ ...prev, [key]: value }));
+    },
+    [],
+  );
 
   const toggleMulti = useCallback((key: ArrayKey, value: string) => {
     setFilters((prev) => {
@@ -101,16 +112,31 @@ export function useFilters(maxPrice: number) {
 
   const activeFilters = useMemo<ActiveFilterChip[]>(() => {
     const chips: ActiveFilterChip[] = [];
-    if (filters.search) chips.push({ key: "search", label: `Search: ${filters.search}` });
-    filters.categories.forEach((value) => chips.push({ key: "categories", value, label: value }));
-    filters.brands.forEach((value) => chips.push({ key: "brands", value, label: value }));
-    filters.stock.forEach((value) => chips.push({ key: "stock", value, label: value }));
-    if (filters.rating) chips.push({ key: "rating", label: `${filters.rating}+ stars` });
-    if (filters.favoritesOnly) chips.push({ key: "favorites", label: "Favorites" });
+    if (filters.search)
+      chips.push({ key: "search", label: `Search: ${filters.search}` });
+    filters.categories.forEach((value) =>
+      chips.push({ key: "categories", value, label: value }),
+    );
+    filters.brands.forEach((value) =>
+      chips.push({ key: "brands", value, label: value }),
+    );
+    filters.stock.forEach((value) =>
+      chips.push({ key: "stock", value, label: value }),
+    );
+    if (filters.rating)
+      chips.push({ key: "rating", label: `${filters.rating}+ stars` });
+    if (filters.favoritesOnly)
+      chips.push({ key: "favorites", label: "Favorites" });
     if (filters.priceMin > 0 || (maxPrice && filters.priceMax < maxPrice)) {
       chips.push({
         key: "price",
         label: `$${filters.priceMin} - $${filters.priceMax}`,
+      });
+    }
+    if (filters.startDate && filters.endDate) {
+      chips.push({
+        key: "date",
+        label: `$${filters.startDate} - $${filters.endDate}`,
       });
     }
     return chips;

@@ -1,7 +1,10 @@
 import type { Filters } from "../types/filter.types";
 import type { Product } from "../types/product.types";
 
-export function filterProducts(products: Product[], filters: Filters & { favoriteIds?: number[] }) {
+export function filterProducts(
+  products: Product[],
+  filters: Filters & { favoriteIds?: number[] },
+) {
   const {
     search,
     categories,
@@ -9,6 +12,8 @@ export function filterProducts(products: Product[], filters: Filters & { favorit
     rating,
     stock,
     priceMin,
+    startDate,
+    endDate,
     priceMax,
     favoritesOnly,
     favoriteIds,
@@ -22,7 +27,8 @@ export function filterProducts(products: Product[], filters: Filters & { favorit
       if (!haystack.includes(searchValue)) return false;
     }
 
-    if (categories?.length && !categories.includes(product.category)) return false;
+    if (categories?.length && !categories.includes(product.category))
+      return false;
     if (brands?.length && !brands.includes(product.brand)) return false;
     if (rating && product.rating < rating) return false;
 
@@ -37,7 +43,19 @@ export function filterProducts(products: Product[], filters: Filters & { favorit
     }
 
     if (Number.isFinite(priceMin) && product.price < priceMin) return false;
-    if (Number.isFinite(priceMax) && priceMax > 0 && product.price > priceMax) return false;
+    if (Number.isFinite(priceMax) && priceMax > 0 && product.price > priceMax)
+      return false;
+
+    if (startDate.length > 0 && endDate.length > 0) {
+      const reviews = product.reviews.filter((itm) => {
+        const startD = Number(new Date(startDate).getTime());
+        const endD = Number(new Date(endDate).getTime());
+        const reviewDate = Number(new Date(itm.date).getTime());
+        return startD <= reviewDate && reviewDate <= endD;
+      });
+      return reviews.length > 0;
+    }
+
     if (favoritesOnly && !favoriteIds?.includes(product.id)) return false;
 
     return true;
