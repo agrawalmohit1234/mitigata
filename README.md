@@ -1,70 +1,63 @@
-# Getting Started with Create React App
+# MitiGata E-Commerce Dashboard (SDE-3)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Setup Instructions
+- Node version: `18.x` (tested with Node 18 LTS)
+- Install dependencies: `npm install`
+- Run locally: `npm start`
+- Build: `npm run build`
 
-## Available Scripts
+## Design Decisions
+- State management: React Context + hooks.
+  - Rationale: The app has shared state (filters, compare list, favorites, toasts) that benefits from a single, predictable source of truth without adding the overhead of Redux/Zustand for a mid-size SPA.
+  - Context boundaries are scoped (`ProductContext`, `FavoritesContext`, `ToastContext`) to avoid global overreach and to keep renders predictable.
 
-In the project directory, you can run:
+## Performance Optimizations
+- `React.memo` on `ProductCard` to avoid unnecessary re-renders.
+- `useMemo` for filtered/sorted lists and derived counts (categories/brands).
+- `useCallback` for handlers passed into child components.
+- Debounced search (300ms) to avoid per-keystroke heavy filtering.
+- Throttled price range updates (100ms) to keep slider smooth.
+- Pagination to keep render count stable at 24 items per page.
+- Request caching in `fetchProducts` to avoid redundant API calls.
+- Lazy-loaded modals/drawers with `React.lazy` + `Suspense`.
 
-### `npm start`
+## Advanced Features (Chosen)
+1. **Option C: Optimistic UI (Favorites System)**
+   - Instant feedback on heart toggle with rollback on persistence failure.
+   - Shows loading spinner during save, with toast success/failure.
+   - Chosen to demonstrate UX responsiveness and robust error handling.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+2. **Option A: Analytics Dashboard**
+   - Custom SVG visualizations (no chart libraries) with animations.
+   - Shows business insights like price distribution and stock health.
+   - Chosen to demonstrate data-driven UI composition and SVG rendering.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Architecture Overview
+Simple component map:
+```
+App
+  Header
+  FilterPanel
+  ProductGrid
+    ProductCard
+  ProductModal
+  ComparisonDrawer
+  ToastHost
+```
+Simple state flow:
+- `useProducts` fetches and caches products.
+- `useFilters` holds filters and URL sync.
+- `filterProducts` + `sortProducts` build the list.
+- Contexts: `FavoritesContext`, `ProductContext`, `ToastContext`.
 
-### `npm test`
+## Known Limitations
+- Pagination is used instead of full virtual scrolling (to remove flicker). With more time, I would reintroduce virtual scrolling using fixed-height virtualization with stable row measurement.
+- No server-side rendering or prefetching; for a production scale app, I’d add route-level code splitting + data prefetch.
+- Chart data is recomputed in-memory; for large datasets I’d pre-aggregate on fetch or memoize with a normalized store.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Time Breakdown (2.5 hours)
+1. Layout + core data flow (filters/sort/search): ~45 min
+2. Product cards, detail modal, comparison drawer: ~40 min
+3. Performance work + pagination: ~25 min
+4. Analytics dashboard (SVG charts): ~25 min
+5. Favorites system (optimistic + persistence): ~15 min
